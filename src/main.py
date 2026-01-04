@@ -1,15 +1,14 @@
-from telegram import Update
-
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from config.config import BOT_TOKEN
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=update.effective_chat.id, text="I'm a bot, please talk to me!")
+from handler import Handler
+from telegram.ext import ApplicationBuilder, CommandHandler
 
 if __name__ == '__main__':
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     
-    start_handler = CommandHandler('start', start)
+    start_handler = CommandHandler('start', Handler.start)
+    author_handler = CommandHandler('author', Handler.author)
+    
     application.add_handler(start_handler)
+    application.add_handler(author_handler)
     
     application.run_polling()
