@@ -15,7 +15,7 @@ def initialize_database(db_name):
         
         if user_version == 0:
             model_classes = [
-                cls for cls in inspect.getmembers(models, inspect.isclass)
+                cls for name, cls in inspect.getmembers(models, inspect.isclass)
                 if cls.__module__ == models.__name__ and hasattr(cls, '_meta')
             ]
             

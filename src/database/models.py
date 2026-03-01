@@ -6,9 +6,9 @@ db_proxy = DatabaseProxy()
 
 
 class User(Model):
-    name = CharField()
+    username = CharField()
     telegram_id = CharField()
-    goal_end_date = DateField()
+    created_at = TimestampField()
     
     class Meta:
         database = db_proxy
@@ -16,9 +16,17 @@ class User(Model):
       
 class Goal(Model):
     name = CharField()
-    is_done = BooleanField()
+    created_at = TimestampField()
     user = ForeignKeyField(User, backref='goals')
     
     class Meta:
         database = db_proxy
     
+    
+class Deadline(Model):
+    deadline = DateField()
+    country_timezone = CharField()
+    user = ForeignKeyField(User, backref='deadline')
+    
+    class Meta:
+        database = db_proxy
