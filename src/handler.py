@@ -2,7 +2,7 @@ import logging
 import pytz
 
 from config.bot_text import BotText
-from database.models import User
+from database.models import User, Goal, Deadline
 from datetime import datetime as dt
 from enum import IntEnum, auto
 from peewee import DoesNotExist
@@ -56,6 +56,13 @@ def format_goal_list(goals: list, user_data: dict) -> str:
     return BotText.verify_goals.format(deadline = deadline_str, goals = goal_str)
 
 
+def save_user(update: Update, user_data: dict) -> None:
+    user = User.create(username=update.message.from_user.name,telegram_id=update.message.from_user.id)
+    Deadline.create(deadline=user_data["deadline"],country_timezone=user_data["country_timezone"], user=user)
+    for goal_string in user_data["goals"]:
+        Goal.create(name=goal_string,user=user)
+
+
 # COMMAND HANDLERS
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -82,7 +89,7 @@ def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-# STATE HANDLERSI = au
+# STATE HANDLERS
 
 async def initialize_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     state = State.CANCEL
@@ -161,8 +168,10 @@ async def initialize_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         user_data["country_timezone"] = pytz.country_timezones(update.message.text)
         reply_text = BotText.finish_initialization
+        save_user(update=update,user_data=user_data)
         state = ConversationHandler.END
-    except:
+    except Exception as e: 
+        logging.error(e)
         state = State.INITIALIZE_TIMEZONE
         reply_text = "That doesn't seem right. Check your typo and try again."
     
