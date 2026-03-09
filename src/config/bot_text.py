@@ -13,7 +13,7 @@ Github: https://github.com/nguyenminhphi-2003"""
     Here are your goals until {deadline}:
 {goals}
 """
-  
+
     initialize_deadline = """
 First, let's set an end date.
 What date would you like to set as the deadline?
@@ -79,4 +79,10 @@ From now on, this bot will remind you of your goals every day.
 Success is built quietly — keep building.
 
 You can review your goals anytime by typing /review_goals.
+"""
+
+    daily_remind = """
+Only {days} days left  until {deadline} to conquer all your goals!
+
+{goals}
 """

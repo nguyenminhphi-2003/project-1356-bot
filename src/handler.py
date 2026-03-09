@@ -39,6 +39,23 @@ async def get_user(telegram_user: TelegramUser) -> User:
     return user
 
 
+async def remind(context: ContextTypes.DEFAULT_TYPE) -> None:
+    job = context.job
+    user_data = job.data
+    
+    goal_str = ""
+    for goal in user_data["goals"]:
+        goal_str += f"    {user_data['goals'].index(goal) + 1}. {goal}\n"
+    deadline_str = dt.strftime(user_data["deadline"], "%m/%d/%Y")
+    
+    text = BotText.daily_remind.format(
+        days=(user_data["deadline"] - dt.now()).days,
+        deadline = deadline_str,
+        goals = goal_str)
+    
+    await context.bot.send_message(text=text, chat_id=job.chat_id)
+
+
 def try_parse_date(date_str: str, format: str) -> str:
     try:
         d = dt.strptime(date_str, format)
@@ -105,6 +122,7 @@ async def initialize_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_text = BotText.initialize_goals
         user_data["deadline"] = deadline
 
+    logging.info(user_data)
     await update.message.reply_text(reply_text)
     return state
 
@@ -169,6 +187,7 @@ async def initialize_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE
         user_data["country_timezone"] = pytz.country_timezones(update.message.text)
         reply_text = BotText.finish_initialization
         save_user(update=update,user_data=user_data)
+        context.job_queue.run_repeating(remind, interval=1, chat_id=update.effective_message.chat_id, data=user_data)
         state = ConversationHandler.END
     except Exception as e: 
         logging.error(e)
