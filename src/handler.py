@@ -66,10 +66,10 @@ def try_parse_date(date_str: str, format: str) -> str:
 
 
 def format_goal_list(goals: list, user_data: dict) -> str:
+    deadline_str = dt.strftime(user_data["deadline"], "%m/%d/%Y")
     goal_str = ""
     for goal in goals:
         goal_str += str(goals.index(goal) + 1) + ". " + goal + "\n"
-    deadline_str = dt.strftime(user_data["deadline"], "%m/%d/%Y")
     return BotText.verify_goals.format(deadline = deadline_str, goals = goal_str)
 
 
@@ -90,7 +90,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     user = await get_user(update.message.from_user)
     if user == None:
-        # sleep(2)
+        sleep(2)
         state = State.INITIALIZE_DEADLINE
         reply_text = BotText.initialize_deadline
 
@@ -186,8 +186,10 @@ async def initialize_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         user_data["country_timezone"] = pytz.country_timezones(update.message.text)
         reply_text = BotText.finish_initialization
+        
         save_user(update=update,user_data=user_data)
-        context.job_queue.run_repeating(remind, interval=1, chat_id=update.effective_message.chat_id, data=user_data)
+        context.job_queue.run_once(remind,when=1.5,chat_id=update.effective_message.chat_id,data=user_data)
+        
         state = ConversationHandler.END
     except Exception as e: 
         logging.error(e)
