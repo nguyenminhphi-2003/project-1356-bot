@@ -9,10 +9,19 @@ Let's get started!"""
 Email: nmphi2710@gmail.com
 Github: https://github.com/nguyenminhphi-2003"""
 
+
     review_goals = """
     Here are your goals until {deadline}:
 {goals}
 """
+
+
+    existed_user_message = """
+    You've already defined your goals. Now reach for them!
+    
+{goals}
+"""
+
 
     initialize_deadline = """
 First, let's set an end date.

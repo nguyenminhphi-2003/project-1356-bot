@@ -3,7 +3,7 @@ import pytz
 
 from config.bot_text import BotText
 from database.models import User, Goal, Deadline
-from datetime import datetime as dt
+from datetime import datetime
 from enum import IntEnum, auto
 from peewee import DoesNotExist
 from telegram import Update, User as TelegramUser
@@ -24,75 +24,25 @@ class State(IntEnum):
     CANCEL = auto()
 
 
-# HELPER FUNCTIONS
-
-
-async def get_user(telegram_user: TelegramUser) -> User:
-    try:
-        user = User.get(User.telegram_id == telegram_user.id)
-        logging.info(f"User found. TelegramId: {user.telegram_id}")
-    except DoesNotExist:
-        user = None
-        logging.info("No user found.")
-
-    logging.debug(user)
-    return user
-
-
-async def remind(context: ContextTypes.DEFAULT_TYPE) -> None:
-    job = context.job
-    user_data = job.data
-    
-    goal_str = ""
-    for goal in user_data["goals"]:
-        goal_str += f"    {user_data['goals'].index(goal) + 1}. {goal}\n"
-    deadline_str = dt.strftime(user_data["deadline"], "%m/%d/%Y")
-    
-    text = BotText.daily_remind.format(
-        days=(user_data["deadline"] - dt.now()).days,
-        deadline = deadline_str,
-        goals = goal_str)
-    
-    await context.bot.send_message(text=text, chat_id=job.chat_id)
-
-
-def try_parse_date(date_str: str, format: str) -> str:
-    try:
-        d = dt.strptime(date_str, format)
-    except ValueError:
-        d = None
-    
-    return d
-
-
-def format_goal_list(goals: list, user_data: dict) -> str:
-    deadline_str = dt.strftime(user_data["deadline"], "%m/%d/%Y")
-    goal_str = ""
-    for goal in goals:
-        goal_str += str(goals.index(goal) + 1) + ". " + goal + "\n"
-    return BotText.verify_goals.format(deadline = deadline_str, goals = goal_str)
-
-
-def save_user(update: Update, user_data: dict) -> None:
-    user = User.create(username=update.message.from_user.name,telegram_id=update.message.from_user.id)
-    Deadline.create(deadline=user_data["deadline"],country_timezone=user_data["country_timezone"], user=user)
-    for goal_string in user_data["goals"]:
-        Goal.create(name=goal_string,user=user)
-
-
-# COMMAND HANDLERS
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     state = State.CANCEL
     reply_text = ""
 
-    await update.message.reply_text(BotText.welcome)
 
     user = await get_user(update.message.from_user)
     if user == None:
+        await update.message.reply_text(BotText.welcome)
         sleep(2)
         state = State.INITIALIZE_DEADLINE
         reply_text = BotText.initialize_deadline
+    else:
+        goal_list = []
+        for goal in Goal.select(Goal, User).join(User).iterator():
+            goal_list.append(goal.name)
+            
+        state = ConversationHandler.END
+        reply_text = BotText.existed_user_message.format(goals = list_to_bulleted_string(goal_list))
+            
 
     await update.message.reply_text(reply_text)
     return state
@@ -105,8 +55,6 @@ async def author(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
-
-# STATE HANDLERS
 
 async def initialize_deadline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     state = State.CANCEL
@@ -211,3 +159,71 @@ conv = ConversationHandler(
     },
     fallbacks=[CommandHandler('cancel', cancel)],
 )
+
+
+async def get_user(telegram_user: TelegramUser) -> User:
+    try:
+        user = User.get(User.telegram_id == telegram_user.id)
+        logging.info(f"User found. TelegramId: {user.telegram_id}")
+    except DoesNotExist:
+        user = None
+        logging.info("No user found.")
+
+    logging.debug(user)
+    return user
+
+
+async def remind(context: ContextTypes.DEFAULT_TYPE) -> None:
+    job = context.job
+    user_data = job.data
+    
+    goal_str = ""
+    for goal in user_data["goals"]:
+        goal_str += f"    {user_data['goals'].index(goal) + 1}. {goal}\n"
+    deadline_str = parse_datetime_to_string(user_data["deadline"])
+    
+    text = BotText.daily_remind.format(
+        days=(user_data["deadline"] - datetime.now()).days,
+        deadline = deadline_str,
+        goals = goal_str)
+    
+    await context.bot.send_message(text=text, chat_id=job.chat_id)
+
+
+def try_parse_date(date_str: str, format: str) -> str:
+    try:
+        d = datetime.strptime(date_str, format)
+    except ValueError:
+        d = None
+    
+    return d
+
+
+def format_goal_list(goals: list, user_data: dict) -> str:
+    return BotText.verify_goals.format(
+        deadline = parse_datetime_to_string(user_data["deadline"]),
+        goals = list_to_bulleted_string(goals)
+    )
+
+
+def list_to_bulleted_string(list: list) -> str:
+    result = ""
+    for list_item in list:
+        result += str(list.index(list_item) + 1) + ". " + list_item + "\n"
+    return result
+
+
+def parse_datetime_to_string(dt: datetime) -> str:
+    return datetime.strftime(dt, "%m/%d/%Y")
+    
+
+
+def save_user(update: Update, user_data: dict) -> None:
+    user = User.create(username=update.message.from_user.name,telegram_id=update.message.from_user.id)
+    Deadline.create(deadline=user_data["deadline"],country_timezone=user_data["country_timezone"], user=user)
+    for goal_string in user_data["goals"]:
+        Goal.create(name=goal_string,user=user)
+
+
+# def remind_existed_user() -> str:
+    
