@@ -3,7 +3,7 @@ import pytz
 
 from config.bot_text import BotText
 from database.models import User, Goal, Deadline
-from datetime import datetime
+from datetime import datetime, time
 from enum import IntEnum, auto
 from peewee import DoesNotExist
 from telegram import Update, User as TelegramUser
@@ -136,7 +136,9 @@ async def initialize_timezone(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_text = BotText.finish_initialization
         
         save_user(update=update,user_data=user_data)
+        send_time = time(hour=7, minute=0, second=0, microsecond=0, tzinfo=pytz.timezone(user_data["country_timezone"][0]), fold=1)
         context.job_queue.run_once(remind,when=1.5,chat_id=update.effective_message.chat_id,data=user_data)
+        context.job_queue.run_daily(remind, time=send_time,chat_id=update.effective_message.chat_id,data=user_data)
         
         state = ConversationHandler.END
     except Exception as e: 
@@ -217,13 +219,8 @@ def parse_datetime_to_string(dt: datetime) -> str:
     return datetime.strftime(dt, "%m/%d/%Y")
     
 
-
 def save_user(update: Update, user_data: dict) -> None:
-    user = User.create(username=update.message.from_user.name,telegram_id=update.message.from_user.id)
-    Deadline.create(deadline=user_data["deadline"],country_timezone=user_data["country_timezone"], user=user)
+    user = User.create(username=update.message.from_user.name, telegram_id=update.message.from_user.id, chat_id=update.message.chat_id)
+    Deadline.create(deadline=user_data["deadline"], country_timezone=user_data["country_timezone"], user=user)
     for goal_string in user_data["goals"]:
         Goal.create(name=goal_string,user=user)
-
-
-# def remind_existed_user() -> str:
-    

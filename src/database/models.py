@@ -12,6 +12,7 @@ def default_datetime_field() -> DateTimeField:
 class User(Model):
     username = CharField()
     telegram_id = CharField()
+    chat_id = CharField()
     created_at = default_datetime_field()
     
     class Meta:
